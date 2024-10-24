@@ -113,7 +113,7 @@ typedef enum Register {
     REG_XMM5,
     REG_XMM6,
     REG_XMM7
-    /* Other rgeisters are not supported for variables */
+    /* Other registers are not supported for variables */
 } Register;
 
 typedef enum Qualifier {
@@ -132,8 +132,8 @@ typedef struct Type {
     size_t* arraySizes;
     size_t arrayDepth;
     char *name;
-    VariableDeclerationNode **paramaters;
-    size_t nParamaters;
+    VariableDeclerationNode **parameters;
+    size_t nParameters;
 } Type;
 
 /* For ints, floats, strings, and chars */
