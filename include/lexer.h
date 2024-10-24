@@ -4,6 +4,9 @@
  * See LICENSE for license.
  */
 
+#ifndef LEXER_H
+#define LEXER_H
+
 #include <stddef.h>
 
 typedef enum TokenType {
@@ -73,14 +76,14 @@ typedef enum TokenType {
     TT_SEMICOLON,
     TT_COLON,
     TT_DOT,
-    TT_ARROW
+    TT_ARROW,
+    TT_ELLIPSIS
 } TokenType;
 
 typedef struct Token {
     TokenType type;
     char *value;
     /* Positional data for error messages */
-    const char *file;
     size_t index;
     size_t line;
     size_t col;
@@ -88,6 +91,9 @@ typedef struct Token {
 } Token;
 
 Token *tokenize(const char *source, const char *file);
+void freeTokens(Token *tokens);
 #ifdef DEBUG
 const char *tokenTypeAsString(Token token);
-#endif
+#endif /* DEBUG */
+
+#endif /* LEXER_H */

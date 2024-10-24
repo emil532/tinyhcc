@@ -11,6 +11,7 @@
 #include <stdbool.h>
 
 #include "lexer.h"
+#include "parser.h"
 
 typedef struct CliArgs {
     const char *outFile;
@@ -97,10 +98,11 @@ int main(int argc, const char **argv) {
         Token* tokens = tokenize(buffer, args.inFiles[i]);
     #ifdef DEBUG
         for (size_t i = 0; tokens[i].type != TT_EOF; i++) {
-            printf("%zu type='%s' value='%s' file='%s' line=%zu column=%zu index=%zu\n", i, tokenTypeAsString(tokens[i]), tokens[i].value, tokens[i].file, tokens[i].line, tokens[i].col, tokens[i].index);
+            printf("%zu type='%s' value='%s' line=%zu column=%zu index=%zu len=%zu\n", i, tokenTypeAsString(tokens[i]), tokens[i].value, tokens[i].line, tokens[i].col, tokens[i].index, tokens[i].len);
         }
     #endif
 
+        freeTokens(tokens);
         free(buffer);
         fclose(f);
     }

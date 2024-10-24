@@ -11,22 +11,25 @@
 
 #include "lexer.h"
 
-static inline void appendToken(Token **tokens, size_t *stokens, size_t *ntokens, Token token) {
-    if (*stokens == *ntokens) {
-        *stokens *= 2;
-        *tokens = realloc(*tokens, *stokens * sizeof(Token));
+static inline void appendToken(Token **tokens, size_t *sTokens, size_t *nTokens, Token token) {
+    if (*sTokens == *nTokens) {
+        *sTokens *= 2;
+        *tokens = realloc(*tokens, *sTokens * sizeof(Token));
     }
-    (*tokens)[(*ntokens)++] = token;
+    (*tokens)[(*nTokens)++] = token;
 }
 
 static const char *keywords[] = {
-    "if", "else", "while", "for", "switch", "case", "asm", "try", "catch", "throw", "break", "goto", "class", "union", NULL
+    "if", "else", "while", "for", "switch", "case", "asm", "try", "catch", "throw", "break", "goto", "class", "union",
+    /* Pseudo */
+    "no_warn", "reg", "noreg", "static", "extern", /* "import", */
+    NULL
 };
 
 Token *tokenize(const char *source, const char *file) {
-    Token* tokens = malloc(128 * sizeof(Token)); /* For performance reasons we assume files will have 128 or more tokens */
-    size_t stokens = 128;
-    size_t ntokens = 0;
+    Token *tokens = malloc(128 * sizeof(Token)); /* For performance reasons we assume files will have 128 or more tokens */
+    size_t sTokens = 128;
+    size_t nTokens = 0;
     size_t i = 0;
     size_t line = 1;
     size_t col = 1;
@@ -42,10 +45,9 @@ Token *tokenize(const char *source, const char *file) {
                 break;
             case '+': {
                 if (source[i + 1] && source[i + 1] == '+') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_INC,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -53,10 +55,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 } else if (source[i + 1] && source[i + 1] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_ADDEQ,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -64,10 +65,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 }
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_ADD,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -76,10 +76,9 @@ Token *tokenize(const char *source, const char *file) {
             } break;
             case '-': {
                 if (source[i + 1] && source[i + 1] == '-') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_DEC,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -87,10 +86,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 } else if (source[i + 1] && source[i + 1] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_SUBEQ,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -98,10 +96,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 } else if (source[i + 1] && source[i + 1] == '>') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_ARROW,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -109,10 +106,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 }
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_SUB,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -121,10 +117,9 @@ Token *tokenize(const char *source, const char *file) {
             } break;
             case '*': {
                 if (source[i + 1] && source[i + 1] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_MULEQ,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -132,10 +127,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 }
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_MUL,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -144,10 +138,9 @@ Token *tokenize(const char *source, const char *file) {
             } break;
             case '/': {
                 if (source[i + 1] && source[i + 1] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_DIVEQ,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -171,10 +164,9 @@ Token *tokenize(const char *source, const char *file) {
                     i += 1;
                     break;
                 }
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_DIV,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -183,10 +175,9 @@ Token *tokenize(const char *source, const char *file) {
             } break;
             case '%': {
                 if (source[i + 1] && source[i + 1] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_MODEQ,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -194,10 +185,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 }
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_MOD,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -206,10 +196,9 @@ Token *tokenize(const char *source, const char *file) {
             } break;
             case '<': {
                 if (source[i + 1] && source[i + 1] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_LTE,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -217,10 +206,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 } else if(source[i + 1] && source[i + 2] && source[i + 1] == '<' && source[i + 2] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_LSHEQ,
                         .value = NULL,
-                        .file = file,
                         .index = i,
                         .col = col,
                         .line = line,
@@ -230,10 +218,9 @@ Token *tokenize(const char *source, const char *file) {
                     col += 2;
                     break;
                 } else if (source[i + 1] && source[i + 1] == '<') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_LSH,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -241,10 +228,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 }
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_LT,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -253,10 +239,9 @@ Token *tokenize(const char *source, const char *file) {
             } break;
             case '>': {
                 if (source[i + 1] && source[i + 1] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_GTE,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -264,10 +249,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 } else if(source[i + 1] && source[i + 2] && source[i + 1] == '>' && source[i + 2] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_RSHEQ,
                         .value = NULL,
-                        .file = file,
                         .index = i,
                         .col = col,
                         .line = line,
@@ -277,10 +261,9 @@ Token *tokenize(const char *source, const char *file) {
                     col += 2;
                     break;
                 } else if (source[i + 1] && source[i + 1] == '>') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_RSH,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -288,10 +271,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 }
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_GT,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -299,10 +281,9 @@ Token *tokenize(const char *source, const char *file) {
                 });
             } break;
             case '~': {
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_BNOT,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -311,10 +292,9 @@ Token *tokenize(const char *source, const char *file) {
             } break;
             case '^': {
                 if (source[i + 1] && source[i + 1] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_XOREQ,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -322,10 +302,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 } else if (source[i + 1] && source[i + 1] == '^') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_XOR,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -333,10 +312,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 }
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_BXOR,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -344,10 +322,9 @@ Token *tokenize(const char *source, const char *file) {
                 });
             } break;
             case '`': {
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_POW,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -356,10 +333,9 @@ Token *tokenize(const char *source, const char *file) {
             } break;
             case '&': {
                 if (source[i + 1] && source[i + 1] == '&') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_AND,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -367,10 +343,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 } else if (source[i + 1] && source[i + 1] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_ANDEQ,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -378,10 +353,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 }
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_BAND,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -390,10 +364,9 @@ Token *tokenize(const char *source, const char *file) {
             } break;
             case '|': {
                 if (source[i + 1] && source[i + 1] == '|') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_OR,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -401,10 +374,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 } else if (source[i + 1] && source[i + 1] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_OREQ,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -412,10 +384,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 }
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_BOR,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -424,10 +395,9 @@ Token *tokenize(const char *source, const char *file) {
             } break;
             case '=': {
                 if (source[i + 1] && source[i + 1] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_EQ,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -435,10 +405,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 }
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_ASSIGN,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -447,10 +416,9 @@ Token *tokenize(const char *source, const char *file) {
             } break;
             case '!': {
                 if (source[i + 1] && source[i + 1] == '=') {
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_NEQ,
                         .value = NULL,
-                        .file = file,
                         .index = i++,
                         .col = col++,
                         .line = line,
@@ -458,10 +426,9 @@ Token *tokenize(const char *source, const char *file) {
                     });
                     break;
                 }
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_NOT,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -469,10 +436,9 @@ Token *tokenize(const char *source, const char *file) {
                 });
             } break;
             case '(': {
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_LPAREN,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -480,10 +446,9 @@ Token *tokenize(const char *source, const char *file) {
                 });
             } break;
             case ')': {
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_RPAREN,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -491,10 +456,9 @@ Token *tokenize(const char *source, const char *file) {
                 });
             } break;
             case '{': {
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_LBRACE,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -502,10 +466,9 @@ Token *tokenize(const char *source, const char *file) {
                 });
             } break;
             case '}': {
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_RBRACE,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -513,10 +476,9 @@ Token *tokenize(const char *source, const char *file) {
                 });
             } break;
             case '[': {
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_LBRACKET,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -524,10 +486,9 @@ Token *tokenize(const char *source, const char *file) {
                 });
             } break;
             case ']': {
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_RBRACKET,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -535,10 +496,9 @@ Token *tokenize(const char *source, const char *file) {
                 });
             } break;
             case ';': {
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_SEMICOLON,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -546,10 +506,9 @@ Token *tokenize(const char *source, const char *file) {
                 });
             } break;
             case ':': {
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_COLON,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -558,10 +517,22 @@ Token *tokenize(const char *source, const char *file) {
             } break;
             case '.': {
                 if (source[i + 1] >= '0' && source[i + 1] <= '9') goto parse_number;
-                appendToken(&tokens, &stokens, &ntokens, (Token) {
+                else if (source[i + 1] && source[i + 2] && source[i + 1] == '.' && source[i + 2] == '.') {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
+                        .type = TT_ELLIPSIS,
+                        .value = NULL,
+                        .index = i,
+                        .col = col,
+                        .line = line,
+                        .len = 3
+                    });
+                    i += 2;
+                    col += 2;
+                    break;
+                }
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
                     .type = TT_DOT,
                     .value = NULL,
-                    .file = file,
                     .index = i,
                     .col = col,
                     .line = line,
@@ -587,10 +558,9 @@ Token *tokenize(const char *source, const char *file) {
                     bool isKeyword = false;
                     for (size_t j = 0; keywords[j]; j++)
                         isKeyword = isKeyword || !strcmp(value, keywords[j]);
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = isKeyword ? TT_KEYWORD : TT_IDENTIFIER,
                         .value = value,
-                        .file = file,
                         .index = start,
                         .col = col,
                         .line = line,
@@ -618,10 +588,9 @@ Token *tokenize(const char *source, const char *file) {
                     char *value = malloc(len + 1);
                     memcpy(value, source + start, len);
                     value[len] = 0;
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = hasDot ? TT_FLOAT : TT_INT,
                         .value = value, /* Guaranteed to be a valid int or float */
-                        .file = file,
                         .index = start,
                         .col = col,
                         .line = line,
@@ -636,10 +605,30 @@ Token *tokenize(const char *source, const char *file) {
                     char *value = malloc(len + 1);
                     memcpy(value, source + start, len);
                     value[len] = 0;
-                    appendToken(&tokens, &stokens, &ntokens, (Token) {
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
                         .type = TT_STRING,
                         .value = value,
-                        .file = file,
+                        .index = start,
+                        .col = col,
+                        .line = line,
+                        .len = len
+                    });
+                    col += len + 1;
+                } else if (source[i] == '\'') {
+                    size_t start = ++i; /* Skip the ' */
+                    while (source[i] && source[i] != '\'') i += 1;
+                    size_t len = (i - start);
+                    char *value = malloc(len + 1);
+                    if (len == 0 || len > 8) {
+                        fprintf(stderr, "%s:%zu:%zu: Invalid character literal '%s'.\n", file, line, col, value);
+                        free(tokens);
+                        return NULL;
+                    }
+                    memcpy(value, source + start, len);
+                    value[len] = 0;
+                    appendToken(&tokens, &sTokens, &nTokens, (Token) {
+                        .type = TT_CHAR,
+                        .value = value,
                         .index = start,
                         .col = col,
                         .line = line,
@@ -656,16 +645,34 @@ Token *tokenize(const char *source, const char *file) {
         i += 1;
         col += 1;
     }
-    appendToken(&tokens, &stokens, &ntokens, (Token) {
+    appendToken(&tokens, &sTokens, &nTokens, (Token) {
         .type = TT_EOF,
         .value = NULL,
-        .file = file,
         .index = i,
         .col = col,
         .line = line,
         .len = 1
     });
     return tokens;
+}
+
+/* This function assumes the tokens array ends with an EOF */
+void freeTokens(Token *tokens) {
+    for (size_t i = 0; tokens[i].type != TT_EOF; i++) {
+        Token token = tokens[i];
+        switch (token.type) {
+            case TT_IDENTIFIER:
+            case TT_KEYWORD:
+            case TT_INT:
+            case TT_FLOAT:
+            case TT_STRING:
+            case TT_CHAR:
+                free(token.value);
+            default:
+                break;
+        }
+    }
+    free(tokens);
 }
 
 #ifdef DEBUG
@@ -775,7 +782,9 @@ const char *tokenTypeAsString(Token token) {
             return "DOT";
         case TT_ARROW:
             return "ARROW";
+        case TT_ELLIPSIS:
+            return "ELLIPSIS";
         }
     return "UNKNOWN";
 }
-#endif
+#endif /* DEBUG */
