@@ -1,0 +1,4 @@
+.clangd
+obj
+bin
+test.HC
