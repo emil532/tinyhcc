@@ -68,7 +68,7 @@ int main(int argc, const char **argv) {
     for (size_t i = 0; i < args.nInFiles; i++) {
         FILE *f = fopen(args.inFiles[i], "rb");
         if (f == NULL) {
-            fprintf(stderr, "Fatal: couldn't oen input file '%s'.", args.inFiles[i]);
+            fprintf(stderr, "Fatal: couldn't open input file '%s'.", args.inFiles[i]);
             fprintf(stderr, "Aborting.\n");
             return 1;
         }
