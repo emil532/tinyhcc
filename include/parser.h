@@ -171,7 +171,7 @@ typedef struct FunctionCallNode {
 } FunctionCallNode;
 
 typedef struct FunctionDeclerationNode {
-    Type returnType;
+    Type type;
     Token name;
     CompoundNode *body;
 } FunctionDeclerationNode;
