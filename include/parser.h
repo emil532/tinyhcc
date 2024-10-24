@@ -121,7 +121,8 @@ typedef enum Qualifier {
     PRIVATE  = 1 << 1,
     PUBLIC   = 1 << 2,
     EXTERN   = 1 << 3,
-    FUNCTION = 1 << 7 /* Pseudo-qualifier, to save space in the Type struct */
+    VARARG   = 1 << 6, /* Pseudo-qualifier */
+    FUNCTION = 1 << 7  /* Pseudo-qualifier */
 } Qualifier;
 
 typedef struct Type {
@@ -172,8 +173,6 @@ typedef struct FunctionCallNode {
 typedef struct FunctionDeclerationNode {
     Type returnType;
     Token name;
-    VariableDeclerationNode **paramaters;
-    size_t nParamaters;
     CompoundNode *body;
 } FunctionDeclerationNode;
 
