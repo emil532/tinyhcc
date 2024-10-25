@@ -165,7 +165,8 @@ def main() -> None:
     builder.cdefine("_CRT_SECURE_NO_WARNINGS", "1")
     builder.build(flp("cli.c"))
     builder.build(flp("lexer.c"))
-    builder.link([flp("cli.o"), flp("lexer.o")], "thcc.exe")
+    builder.build(flp("parser.c"))
+    builder.link([flp("cli.o"), flp("lexer.o"), flp("parser.o")], "thcc.exe")
 
 if __name__ == "__main__":
     main()

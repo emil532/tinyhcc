@@ -142,17 +142,17 @@ typedef struct ValueNode {
 } ValueNode;
 
 /* Arithmetic, comparisons, class/union accesses, and assignments  */
-typedef struct BinOpNode {
+typedef struct BinaryOperationNode {
     Node *lhs;
     Node *rhs;
     Token op;
-} BinOpNode;
+} BinaryOperationNode;
 
 /* For negating, notting, dereferencing, and getting the address of values */
-typedef struct UnaryOpNode {
+typedef struct UnaryOperationNode {
     Node *value;
     Token op;
-} UnaryOpNode;
+} UnaryOperationNode;
 
 struct VariableDeclerationNode {
     Type type;
@@ -252,7 +252,7 @@ typedef struct ParserContext {
 } ParserContext;
 
 static inline void advance(ParserContext *ctx) {
-    ctx->current = ctx->tokens[ctx->index++];
+    ctx->current = ctx->tokens[++ctx->index];
 }
 
 Node *parse(Token *tokens, const char *file, const char *source);
