@@ -539,6 +539,16 @@ Token *tokenize(const char *source, const char *file) {
                     .len = 1
                 });
             } break;
+            case ',': {
+                appendToken(&tokens, &sTokens, &nTokens, (Token) {
+                    .type = TT_COMMA,
+                    .value = NULL,
+                    .index = i,
+                    .col = col,
+                    .line = line,
+                    .len = 1
+                });
+            } break;
             default: {
                 if (
                     (source[i] >= 'a' && source[i] <= 'z') ||
@@ -780,6 +790,8 @@ const char *tokenTypeAsString(Token token) {
             return "COLON";
         case TT_DOT:
             return "DOT";
+        case TT_COMMA:
+            return "COMMA";
         case TT_ARROW:
             return "ARROW";
         case TT_ELLIPSIS:

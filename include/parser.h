@@ -26,7 +26,10 @@ typedef enum NodeType {
     NT_ASSIGN,
     NT_FUNCCALL,
     NT_FUNCDECL,
+
+    /* Dereferencing and accessing */
     NT_ARRAYACCESS,
+    NT_ACCESS,
 
     /* Control flow */
     NT_FOR,
@@ -180,6 +183,12 @@ typedef struct ArrayAccessNode {
     Node *array;
     Node *index;
 } ArrayAccessNode;
+
+typedef struct AccessNode {
+    Node *object;
+    Token op;
+    Token member;
+} AccessNode;
 
 typedef struct ForNode {
     Node *initializer;
