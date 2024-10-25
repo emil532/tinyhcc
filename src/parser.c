@@ -559,7 +559,7 @@ void printTypedVariable(Type type, Token name) {
     stack[0] = type;
     size_t depth = 0;
     while ((stack[depth].qualifiers & FUNCTION) && (stack[depth].type.returnType->qualifiers & FUNCTION)) {
-        stack = realloc(stack, depth + 2);
+        stack = realloc(stack, (depth + 2) * sizeof(Type));
         stack[depth + 1] = *stack[depth].type.returnType;
         depth += 1;
     }
@@ -568,8 +568,8 @@ void printTypedVariable(Type type, Token name) {
     if (stack[depth].qualifiers & PRIVATE) printf("private ");
     if (stack[depth].qualifiers & EXTERN) printf("extern ");
     printf("%s", stack[depth].type.base);
-    for (size_t i = 0; i < type.arrayDepth; i++)
-        printf("[%zu]", type.arraySizes[i]);
+    for (size_t i = 0; i < stack[depth].ptrDepth; i++)
+        printf("*");
     for (size_t i = depth; i >= 0; i--) {
         printf("(");
         for (size_t j = 0; j < stack[i].ptrDepth; j++)
@@ -580,6 +580,8 @@ void printTypedVariable(Type type, Token name) {
         if (stack[i].qualifiers & EXTERN) printf("extern ");
     }
     printf("%s", name.value);
+    for (size_t i = 0; i < type.arrayDepth; i++)
+        printf("[%zu]", type.arraySizes[i]);
     for (size_t i = 0; i < depth + 1; i++) {
         printf(")(");
         for (size_t j = 0; j < stack[i].nParameters; j++) {
@@ -653,7 +655,61 @@ void printNode(Node *node, size_t depth) {
             printf("))");
         } break;
         case NT_FUNCDECL: {
-            printf("TODO: NT_FUNCDECL");
+            FunctionDeclerationNode *funcDecl = (FunctionDeclerationNode*)node->node;
+            Type type = funcDecl->type;
+            Token name = funcDecl->name;
+            Type *stack = malloc(sizeof(Type));
+            stack[0] = type;
+            size_t depth = 0;
+            while ((stack[depth].qualifiers & FUNCTION) && (stack[depth].type.returnType->qualifiers & FUNCTION)) {
+                stack = realloc(stack, (depth + 2) * sizeof(Type));
+                stack[depth + 1] = *stack[depth].type.returnType;
+                depth += 1;
+            }
+            if (stack[depth].qualifiers & STATIC) printf("static ");
+            if (stack[depth].qualifiers & PUBLIC) printf("public ");
+            if (stack[depth].qualifiers & PRIVATE) printf("private ");
+            if (stack[depth].qualifiers & EXTERN) printf("extern ");
+            printf("%s", stack[depth].type.base);
+            for (size_t i = 0; i < stack[depth].ptrDepth; i++)
+                printf("*");
+            for (size_t i = depth; i > 0; i--) {
+                printf("(");
+                for (size_t j = 0; j < stack[i].ptrDepth; j++)
+                    printf("*");
+                if (stack[i].qualifiers & STATIC) printf("static ");
+                if (stack[i].qualifiers & PUBLIC) printf("public ");
+                if (stack[i].qualifiers & PRIVATE) printf("private ");
+                if (stack[i].qualifiers & EXTERN) printf("extern ");
+            }
+            printf("%s", name.value);
+            for (size_t i = 0; i < type.arrayDepth; i++)
+                printf("[%zu]", type.arraySizes[i]);
+            for (size_t i = 0; i < depth + 1; i++) {
+                if (i > 0) printf(")");
+                printf("(");
+                for (size_t j = 0; j < stack[i].nParameters; j++) {
+                    printTypedVariable(stack[i].parameters[j]->type, stack[i].parameters[j]->name);
+                    if (stack[i].parameters[j]->initializer != NULL) {
+                        printf(" = ");
+                        printNode(stack[i].parameters[j]->initializer, 0);
+                    }
+                    if (j < stack[i].nParameters - 1)
+                        printf(", ");
+                }
+                if (stack[i].qualifiers & VARARG) {
+                    if (stack[i].nParameters > 0)
+                        printf(", ");
+                    printf("...");
+                }
+                printf(")");
+            }
+            printf(" ");
+            Node tmp = (Node) {
+                .type = NT_COMPOUND,
+                .node = funcDecl->body
+            };
+            printNode(&tmp, depth + 1);
         } break;
         case NT_ARRAYACCESS: {
             ArrayAccessNode *access = (ArrayAccessNode*)node->node;
@@ -728,10 +784,34 @@ void printNode(Node *node, size_t depth) {
             printNode(try->catchBody, depth);
         } break;
         case NT_CLASS: {
-            printf("TODO: NT_CLASS");
+            TypeNode *type = (TypeNode*)node->node;
+            printf("class %s {\n", type->name.value);
+            for (size_t i = 0; i < type->nFields; i++) {
+                for (size_t j = 0; j < depth; j++)
+                    printf("  ");
+                Node tmp = (Node) {
+                    .type = NT_VARDECL,
+                    .node = type->fields[i]
+                };
+                printNode(&tmp, 0);
+                printf(";");
+            }
+            printf("}");
         } break;
         case NT_UNION: {
-            printf("TODO: NT_UNION");
+            TypeNode *type = (TypeNode*)node->node;
+            printf("union %s {\n", type->name.value);
+            for (size_t i = 0; i < type->nFields; i++) {
+                for (size_t j = 0; j < depth; j++)
+                    printf("  ");
+                Node tmp = (Node) {
+                    .type = NT_VARDECL,
+                    .node = type->fields[i]
+                };
+                printNode(&tmp, 0);
+                printf(";");
+            }
+            printf("}");
         } break;
         case NT_COMPOUND: {
             CompoundNode *compound = (CompoundNode*)node->node;

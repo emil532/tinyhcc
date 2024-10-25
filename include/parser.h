@@ -213,13 +213,7 @@ typedef struct IfNode {
 } IfNode;
 
 typedef struct SwitchNode {
-    Node *value;
-    Node **cases;
-    Node **bodies;
-    Node *defaultCase;
-    /* For sub-switches */
-    size_t startIndex;
-    size_t endIndex;
+    /* TODO */
 } SwitchNode;
 
 typedef struct GotoNode {
