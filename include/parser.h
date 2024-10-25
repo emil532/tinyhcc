@@ -120,23 +120,26 @@ typedef enum Register {
 } Register;
 
 typedef enum Qualifier {
-    STATIC   = 1 << 0,
-    PRIVATE  = 1 << 1,
-    PUBLIC   = 1 << 2,
-    EXTERN   = 1 << 3,
-    VARARG   = 1 << 6, /* Pseudo-qualifier */
-    FUNCTION = 1 << 7  /* Pseudo-qualifier */
+    STATIC       = 1 << 0,
+    PRIVATE      = 1 << 1,
+    PUBLIC       = 1 << 2,
+    EXTERN       = 1 << 3,
+    VARARG       = 1 << 8, /* Pseudo-qualifier */
+    FUNCTION     = 1 << 9  /* Pseudo-qualifier */
 } Qualifier;
 
 typedef struct Type {
     Register reg;
     Qualifier qualifiers;
     size_t ptrDepth;
-    size_t* arraySizes;
+    size_t *arraySizes;
     size_t arrayDepth;
-    char *name;
     VariableDeclerationNode **parameters;
     size_t nParameters;
+    union {
+        struct Type *returnType;
+        char *base;
+    } type;
 } Type;
 
 /* For ints, floats, strings, and chars */
@@ -265,5 +268,7 @@ static inline void advance(ParserContext *ctx) {
 }
 
 Node *parse(Token *tokens, const char *file, const char *source);
-
+#ifdef TRANSPILER
+void printNode(Node *node, size_t depth);
+#endif /* TRANSPILER */
 #endif /* PARSER_H */

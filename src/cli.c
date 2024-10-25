@@ -100,14 +100,19 @@ int main(int argc, const char **argv) {
         for (size_t i = 0; tokens[i].type != TT_EOF; i++) {
             printf("%zu type='%s' value='%s' line=%zu column=%zu index=%zu len=%zu\n", i, tokenTypeAsString(tokens[i]), tokens[i].value, tokens[i].line, tokens[i].col, tokens[i].index, tokens[i].len);
         }
-    #endif
+    #endif /* DEBUG */
         Node *AST = parse(tokens, args.inFiles[i], buffer);
     #ifdef DEBUG
-        /* TODO: Add some form of AST printing, perhaps a transpiler? */
-    #endif
-        if (AST != NULL) {
-            printf("Number of statements: %zu\n", ((CompoundNode*)AST->node)->nStatements);
+    #ifdef TRANSPILER
+        for (size_t i = 0; i < ((CompoundNode*)AST->node)->nStatements; i++) {
+            printNode(((CompoundNode*)AST->node)->statements[i], 1);
+            if (((CompoundNode*)AST->node)->statements[i]->type != NT_LABEL)
+                printf(";");
         }
+    #else
+        printf("Number of statements parsed: %zu\n", ((CompoundNode*)AST->node)->nStatements);
+    #endif /* TRANSPILER */
+    #endif /* DEBUG */
 
         freeTokens(tokens);
         free(buffer);

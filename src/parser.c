@@ -4,6 +4,7 @@
  * See LICENSE for license.
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
@@ -435,3 +436,315 @@ Node *parse(Token *tokens, const char *file, const char *source) {
     AST->node = program;
     return AST;
 }
+
+#ifdef TRANSPILER
+char *operatorFromToken(Token token) {
+    switch (token.type) {
+        case TT_ADD: return "+";
+        case TT_SUB: return "-";
+        case TT_MUL: return "*";
+        case TT_DIV: return "/";
+        case TT_MOD: return "%";
+        case TT_POW: return "`";
+        case TT_NOT: return "!";
+        case TT_XOR: return "^^";
+        case TT_INC: return "++";
+        case TT_DEC: return "--";
+        case TT_LSH: return "<<";
+        case TT_RSH: return ">>";
+        case TT_BNOT: return "~";
+        case TT_BXOR: return "^";
+        case TT_BAND: return "&";
+        case TT_BOR: return "|";
+        case TT_LT: return "<";
+        case TT_GT: return ">";
+        case TT_LTE: return "<=";
+        case TT_GTE: return ">=";
+        case TT_EQ: return "==";
+        case TT_NEQ: return "!=";
+        case TT_AND: return "&&";
+        case TT_OR: return "||";
+        case TT_ASSIGN: return "=";
+        case TT_ADDEQ: return "+=";
+        case TT_SUBEQ: return "-=";
+        case TT_MULEQ: return "*=";
+        case TT_DIVEQ: return "/=";
+        case TT_MODEQ: return "%=";
+        case TT_LSHEQ: return "<<=";
+        case TT_RSHEQ: return ">>=";
+        case TT_ANDEQ: return "&=";
+        case TT_OREQ: return "|=";
+        case TT_XOREQ: return "^=";
+        case TT_DOT: return ".";
+        case TT_ARROW: return "->";
+        default: return "UNKNOWN";
+    }
+}
+
+char *regAsString(Register reg) {
+    switch (reg) {
+        case NONE:
+        case AUTO:
+            return NULL;
+        case REG_RAX: return "RAX";
+        case REG_RBX: return "RBX";
+        case REG_RCX: return "RCX";
+        case REG_RDX: return "RDX";
+        case REG_RSI: return "RSI";
+        case REG_RDI: return "RDI";
+        case REG_RBP: return "RBP";
+        case REG_RSP: return "RSP";
+        case REG_R8: return "R8";
+        case REG_R9: return "R9";
+        case REG_R10: return "R10";
+        case REG_R11: return "R11";
+        case REG_R12: return "R12";
+        case REG_R13: return "R13";
+        case REG_R14: return "R14";
+        case REG_R15: return "R15";
+        case REG_EAX: return "EAX";
+        case REG_EBX: return "EBX";
+        case REG_ECX: return "ECX";
+        case REG_ESP: return "ESP";
+        case REG_EBP: return "EBP";
+        case REG_EDI: return "EDI";
+        case REG_ESI: return "ESI";
+        case REG_EDX: return "EDX";
+        case REG_AX: return "AX";
+        case REG_BX: return "BX";
+        case REG_CX: return "CX";
+        case REG_SP: return "SP";
+        case REG_BP: return "BP";
+        case REG_DI: return "DI";
+        case REG_SI: return "SI";
+        case REG_DX: return "DX";
+        case REG_AH: return "AH";
+        case REG_AL: return "AL";
+        case REG_BH: return "BH";
+        case REG_BL: return "BL";
+        case REG_CH: return "CH";
+        case REG_CL: return "CL";
+        case REG_SPL: return "SPL";
+        case REG_BPL: return "BPL";
+        case REG_DIL: return "DIL";
+        case REG_SIL: return "SIL";
+        case REG_DH: return "DH";
+        case REG_DL: return "DL";
+        case REG_XMM0: return "XMM0";
+        case REG_XMM1: return "XMM1";
+        case REG_XMM2: return "XMM2";
+        case REG_XMM3: return "XMM3";
+        case REG_XMM4: return "XMM4";
+        case REG_XMM5: return "XMM5";
+        case REG_XMM6: return "XMM6";
+        case REG_XMM7: return "XMM7";
+    }
+}
+
+void printTypedVariable(Type type, Token name) {
+    if (!(type.qualifiers & FUNCTION)) {
+        if (type.qualifiers & STATIC) printf("static ");
+        if (type.qualifiers & PUBLIC) printf("public ");
+        if (type.qualifiers & PRIVATE) printf("private ");
+        if (type.qualifiers & EXTERN) printf("extern ");
+        printf("%s ", type.type.base);
+        for (size_t i = 0; i < type.ptrDepth; i++)
+            printf("*");
+        printf("%s", name.value);
+        for (size_t i = 0; i < type.arrayDepth; i++)
+            printf("[%zu]", type.arraySizes[i]);
+        return;
+    }
+    Type *stack = malloc(sizeof(Type));
+    stack[0] = type;
+    size_t depth = 0;
+    while ((stack[depth].qualifiers & FUNCTION) && (stack[depth].type.returnType->qualifiers & FUNCTION)) {
+        stack = realloc(stack, depth + 2);
+        stack[depth + 1] = *stack[depth].type.returnType;
+        depth += 1;
+    }
+    if (stack[depth].qualifiers & STATIC) printf("static ");
+    if (stack[depth].qualifiers & PUBLIC) printf("public ");
+    if (stack[depth].qualifiers & PRIVATE) printf("private ");
+    if (stack[depth].qualifiers & EXTERN) printf("extern ");
+    printf("%s", stack[depth].type.base);
+    for (size_t i = 0; i < type.arrayDepth; i++)
+        printf("[%zu]", type.arraySizes[i]);
+    for (size_t i = depth; i >= 0; i--) {
+        printf("(");
+        for (size_t j = 0; j < stack[i].ptrDepth; j++)
+            printf("*");
+        if (stack[i].qualifiers & STATIC) printf("static ");
+        if (stack[i].qualifiers & PUBLIC) printf("public ");
+        if (stack[i].qualifiers & PRIVATE) printf("private ");
+        if (stack[i].qualifiers & EXTERN) printf("extern ");
+    }
+    printf("%s", name.value);
+    for (size_t i = 0; i < depth + 1; i++) {
+        printf(")(");
+        for (size_t j = 0; j < stack[i].nParameters; j++) {
+            printTypedVariable(stack[i].parameters[j]->type, stack[i].parameters[j]->name);
+            if (stack[i].parameters[j]->initializer != NULL) {
+                printf(" = ");
+                printNode(stack[i].parameters[j]->initializer, 0);
+            }
+            if (j < stack[i].nParameters - 1)
+                printf(", ");
+        }
+        if (stack[i].qualifiers & VARARG) {
+            if (stack[i].nParameters > 0)
+                printf(", ");
+            printf("...");
+        }
+        printf(")");
+    }
+}
+
+void printNode(Node *node, size_t depth) {
+    switch (node->type) {
+        case NT_INT:
+        case NT_FLOAT: {
+            printf("%s", ((ValueNode*)node->node)->value.value);
+        } break;
+        case NT_STRING: {
+            printf("\"%s\"", ((ValueNode*)node->node)->value.value);
+        } break;
+        case NT_CHAR: {
+            printf("'%s'", ((ValueNode*)node->node)->value.value);
+        } break;
+        case NT_ASSIGN:
+        case NT_BINOP: {
+            BinaryOperationNode *binOp = (BinaryOperationNode*)node->node;
+            printf("(");
+            printNode(binOp->lhs, 0);
+            printf(" %s ", operatorFromToken(binOp->op));
+            printNode(binOp->rhs, 0);
+            printf(")");
+        } break;
+        case NT_UNARYOP: {
+            UnaryOperationNode *unOp = (UnaryOperationNode*)node->node;
+            printf("(");
+            printf("%s", operatorFromToken(unOp->op));
+            printNode(unOp->value, 0);
+            printf(")");
+        } break;
+        case NT_VARACCESS: {
+            VariableAccessNode *varAccess = (VariableAccessNode*)node->node;
+            printf("%s", varAccess->name.value);
+        } break;
+        case NT_VARDECL: {
+            VariableDeclerationNode *varDecl = (VariableDeclerationNode*)node->node;
+            printTypedVariable(varDecl->type, varDecl->name);
+            if (varDecl->initializer != NULL) {
+                printf(" = ");
+                printNode(varDecl->initializer, 0);
+            }
+        } break;
+        case NT_FUNCCALL: {
+            FunctionCallNode *funcCall = (FunctionCallNode*)node->node;
+            printf("(");
+            printNode(funcCall->function, 0);
+            printf("(");
+            for (size_t i = 0; i < funcCall->nArguments; i++) {
+                printNode(funcCall->arguments[i], 0);
+                if (i < funcCall->nArguments - 1)
+                    printf(", ");
+            }
+            printf("))");
+        } break;
+        case NT_FUNCDECL: {
+            printf("TODO: NT_FUNCDECL");
+        } break;
+        case NT_ARRAYACCESS: {
+            ArrayAccessNode *access = (ArrayAccessNode*)node->node;
+            printf("(");
+            printNode(access->array, 0);
+            printf("[");
+            printNode(access->index, 0);
+            printf("]");
+            printf(")");
+        } break;
+        case NT_ACCESS: {
+            AccessNode *access = (AccessNode*)node->node;
+            printf("(");
+            printNode(access->object, 0);
+            printf("%s%s)", operatorFromToken(access->op), access->member.value);
+        } break;
+        case NT_FOR: {
+            ForNode *forLoop = (ForNode*)node->node;
+            printf("for (");
+            if (forLoop->initializer)
+                printNode(forLoop->initializer, 0);
+            printf(";");
+            if (forLoop->condition)
+                printNode(forLoop->condition, 0);
+            printf(";");
+            if (forLoop->increment)
+                printNode(forLoop->increment, 0);
+            printf(") ");
+            printNode(forLoop->body, depth);
+        } break;
+        case NT_WHILE: {
+            WhileNode *whileLoop = (WhileNode*)node->node;
+            printf("while (");
+            printNode(whileLoop->condition, 0);
+            printf(") ");
+            printNode(whileLoop->body, depth);
+        } break;
+        case NT_IF: {
+            IfNode* ifStatement = (IfNode*)node->node;
+            printf("if (");
+            printNode(ifStatement->conditions[0], 0);
+            printf(") ");
+            printNode(ifStatement->bodies[0], depth);
+            for (size_t i = 1; i < ifStatement->nCases; i++) {
+                printf(" else if (");
+                printNode(ifStatement->conditions[i], 0);
+                printf(") ");
+                printNode(ifStatement->bodies[i], depth);
+            }
+            if (ifStatement->elseCase) {
+                printf(" else ");
+                printNode(ifStatement->elseCase, depth);
+            }
+        }
+        case NT_SWITCH: {
+            printf("TODO: NT_SWITCH");
+        } break;
+        case NT_GOTO: {
+            printf("goto %s", ((GotoNode*)node->node)->label.value);
+        } break;
+        case NT_LABEL: {
+            printf("%s:", ((LabelNode*)node->node)->name.value);
+        } break;
+        case NT_BREAK: {
+            printf("break");
+        } break;
+        case NT_TRY: {
+            TryNode *try = (TryNode*)node->node;
+            printf("try ");
+            printNode(try->body, depth);
+            printf(" catch ");
+            printNode(try->catchBody, depth);
+        } break;
+        case NT_CLASS: {
+            printf("TODO: NT_CLASS");
+        } break;
+        case NT_UNION: {
+            printf("TODO: NT_UNION");
+        } break;
+        case NT_COMPOUND: {
+            CompoundNode *compound = (CompoundNode*)node->node;
+            printf("{\n");
+            for (size_t i = 0; i < compound->nStatements; i++) {
+                for (size_t j = 0; j < depth; j++)
+                    printf("  ");
+                printNode(compound->statements[i], depth + 1);
+                if (compound->statements[i]->type != NT_LABEL)
+                    printf(";");
+            }
+            printf("}");
+        } break;
+    }
+}
+#endif /* TRANSPILER */
