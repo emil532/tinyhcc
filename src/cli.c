@@ -3,7 +3,7 @@
  * https://github.com/wofflevm/tinyhcc
  * See LICENSE for license.
  */
-
+/*test*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
