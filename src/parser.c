@@ -82,30 +82,11 @@ Node *parseLiteralExpression(ParserContext *ctx) {
 }
 
 Node *parseAccessExpression(ParserContext *ctx) {
-    Node *lhs = parseLiteralExpression(ctx);
-    while (ISCURRENTTOKENTYPE(ctx, TT_DOT) || ISCURRENTTOKENTYPE(ctx, TT_ARROW)) {
-        Token op = CURRENTTOKEN(ctx);
-        advance(ctx);
-        if (!ISCURRENTTOKENTYPE(ctx, TT_IDENTIFIER)) {
-            /* TODO: Error message here */
-            return NULL;
-        }
-        Token member = CURRENTTOKEN(ctx);
-        advance(ctx);
-        AccessNode* access = malloc(sizeof(AccessNode));
-        access->object = lhs;
-        access->op = op;
-        access->member = member;
-        lhs = malloc(sizeof(Node));
-        lhs->type = NT_ACCESS;
-        lhs->node = access;
-    }
-    return lhs;
-}
-
-Node *parseFunctionalExpression(ParserContext *ctx) {
-    Node *access = parseAccessExpression(ctx);
-    while (ISCURRENTTOKENTYPE(ctx, TT_LPAREN) || ISCURRENTTOKENTYPE(ctx, TT_LBRACKET)) {
+    Node *access = parseLiteralExpression(ctx);
+    while (
+        ISCURRENTTOKENTYPE(ctx, TT_LPAREN) || ISCURRENTTOKENTYPE(ctx, TT_LBRACKET) ||
+        ISCURRENTTOKENTYPE(ctx, TT_DOT)    || ISCURRENTTOKENTYPE(ctx, TT_ARROW)
+    ) {
         if (ISCURRENTTOKENTYPE(ctx, TT_LPAREN)) {
             advance(ctx);
             Node **arguments = NULL;
@@ -135,7 +116,7 @@ Node *parseFunctionalExpression(ParserContext *ctx) {
             access = malloc(sizeof(Node));
             access->type = NT_FUNCCALL;
             access->node = funcCall;
-        } else {
+        } else if (ISCURRENTTOKENTYPE(ctx, TT_LBRACKET)) {
             advance(ctx);
             Node *index = parseExpression(ctx);
             if (index == NULL) {
@@ -153,6 +134,22 @@ Node *parseFunctionalExpression(ParserContext *ctx) {
             access = malloc(sizeof(Node));
             access->type = NT_ARRAYACCESS;
             access->node = arrayAccess;
+        } else {
+            Token op = CURRENTTOKEN(ctx);
+            advance(ctx);
+            if (!ISCURRENTTOKENTYPE(ctx, TT_IDENTIFIER)) {
+                /* TODO: Error message here */
+                return NULL;
+            }
+            Token member = CURRENTTOKEN(ctx);
+            advance(ctx);
+            AccessNode* acc = malloc(sizeof(AccessNode));
+            acc->object = access;
+            acc->op = op;
+            acc->member = member;
+            access = malloc(sizeof(Node));
+            access->type = NT_ACCESS;
+            access->node = acc;
         }
     }
     return access;
@@ -174,7 +171,7 @@ Node *parseUnaryExpression(ParserContext *ctx) {
         res->type = NT_UNARYOP;
         res->node = unOp;
     }
-    return parseFunctionalExpression(ctx);
+    return parseAccessExpression(ctx);
 }
 
 Node *parseFactorExpression(ParserContext *ctx) {
@@ -429,6 +426,7 @@ Node *parse(Token *tokens, const char *file, const char *source) {
             /* TODO: Print an error here */
             break;
         }
+        advance(&ctx);
         program->statements = realloc(program->statements, (program->nStatements + 1) * sizeof(Node*));
         program->statements[program->nStatements++] = statement;
     }

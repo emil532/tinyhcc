@@ -105,7 +105,9 @@ int main(int argc, const char **argv) {
     #ifdef DEBUG
         /* TODO: Add some form of AST printing, perhaps a transpiler? */
     #endif
-        (void)AST;
+        if (AST != NULL) {
+            printf("Number of statements: %zu\n", ((CompoundNode*)AST->node)->nStatements);
+        }
 
         freeTokens(tokens);
         free(buffer);
