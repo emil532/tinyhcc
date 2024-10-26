@@ -107,7 +107,9 @@ int main(int argc, const char **argv) {
         for (size_t i = 0; i < ((CompoundNode*)AST->node)->nStatements; i++) {
             printNode(((CompoundNode*)AST->node)->statements[i], 1);
             if (((CompoundNode*)AST->node)->statements[i]->type != NT_LABEL)
-                printf(";");
+                printf(";\n");
+            else
+                printf("\n");
         }
     #else
         printf("Number of statements parsed: %zu\n", ((CompoundNode*)AST->node)->nStatements);

@@ -165,7 +165,7 @@ Node *parseAccessExpression(ParserContext *ctx) {
             }
             Token member = CURRENTTOKEN(ctx);
             advance(ctx);
-            AccessNode* acc = malloc(sizeof(AccessNode));
+            AccessNode *acc = malloc(sizeof(AccessNode));
             acc->object = access;
             acc->op = op;
             acc->member = member;
@@ -202,7 +202,7 @@ Node *parseFactorExpression(ParserContext *ctx) {
         Token op = CURRENTTOKEN(ctx);
         advance(ctx);
         Node *rhs = parseUnaryExpression(ctx);
-        BinaryOperationNode* binop = malloc(sizeof(BinaryOperationNode));
+        BinaryOperationNode *binop = malloc(sizeof(BinaryOperationNode));
         binop->lhs = lhs;
         binop->rhs = rhs;
         binop->op = op;
@@ -219,7 +219,7 @@ Node *parseTermExpression(ParserContext *ctx) {
         Token op = CURRENTTOKEN(ctx);
         advance(ctx);
         Node *rhs = parseFactorExpression(ctx);
-        BinaryOperationNode* binop = malloc(sizeof(BinaryOperationNode));
+        BinaryOperationNode *binop = malloc(sizeof(BinaryOperationNode));
         binop->lhs = lhs;
         binop->rhs = rhs;
         binop->op = op;
@@ -236,7 +236,7 @@ Node *parseBinaryAndExpression(ParserContext *ctx) {
         Token op = CURRENTTOKEN(ctx);
         advance(ctx);
         Node *rhs = parseTermExpression(ctx);
-        BinaryOperationNode* binop = malloc(sizeof(BinaryOperationNode));
+        BinaryOperationNode *binop = malloc(sizeof(BinaryOperationNode));
         binop->lhs = lhs;
         binop->rhs = rhs;
         binop->op = op;
@@ -253,7 +253,7 @@ Node *parseBinaryXorExpression(ParserContext *ctx) {
         Token op = CURRENTTOKEN(ctx);
         advance(ctx);
         Node *rhs = parseBinaryAndExpression(ctx);
-        BinaryOperationNode* binop = malloc(sizeof(BinaryOperationNode));
+        BinaryOperationNode *binop = malloc(sizeof(BinaryOperationNode));
         binop->lhs = lhs;
         binop->rhs = rhs;
         binop->op = op;
@@ -270,7 +270,7 @@ Node *parseBinaryOrExpression(ParserContext *ctx) {
         Token op = CURRENTTOKEN(ctx);
         advance(ctx);
         Node *rhs = parseBinaryXorExpression(ctx);
-        BinaryOperationNode* binop = malloc(sizeof(BinaryOperationNode));
+        BinaryOperationNode *binop = malloc(sizeof(BinaryOperationNode));
         binop->lhs = lhs;
         binop->rhs = rhs;
         binop->op = op;
@@ -287,7 +287,7 @@ Node *parseArithmeticExpression(ParserContext *ctx) {
         Token op = CURRENTTOKEN(ctx);
         advance(ctx);
         Node *rhs = parseBinaryOrExpression(ctx);
-        BinaryOperationNode* binop = malloc(sizeof(BinaryOperationNode));
+        BinaryOperationNode *binop = malloc(sizeof(BinaryOperationNode));
         binop->lhs = lhs;
         binop->rhs = rhs;
         binop->op = op;
@@ -307,7 +307,7 @@ Node *parseComparisonExpression(ParserContext *ctx) {
         Token op = CURRENTTOKEN(ctx);
         advance(ctx);
         Node *rhs = parseArithmeticExpression(ctx);
-        BinaryOperationNode* binop = malloc(sizeof(BinaryOperationNode));
+        BinaryOperationNode *binop = malloc(sizeof(BinaryOperationNode));
         binop->lhs = lhs;
         binop->rhs = rhs;
         binop->op = op;
@@ -324,7 +324,7 @@ Node *parseEqualityExpression(ParserContext *ctx) {
         Token op = CURRENTTOKEN(ctx);
         advance(ctx);
         Node *rhs = parseComparisonExpression(ctx);
-        BinaryOperationNode* binop = malloc(sizeof(BinaryOperationNode));
+        BinaryOperationNode *binop = malloc(sizeof(BinaryOperationNode));
         binop->lhs = lhs;
         binop->rhs = rhs;
         binop->op = op;
@@ -341,7 +341,7 @@ Node *parseAndExpression(ParserContext *ctx) {
         Token op = CURRENTTOKEN(ctx);
         advance(ctx);
         Node *rhs = parseEqualityExpression(ctx);
-        BinaryOperationNode* binop = malloc(sizeof(BinaryOperationNode));
+        BinaryOperationNode *binop = malloc(sizeof(BinaryOperationNode));
         binop->lhs = lhs;
         binop->rhs = rhs;
         binop->op = op;
@@ -358,7 +358,7 @@ Node *parseXorExpression(ParserContext *ctx) {
         Token op = CURRENTTOKEN(ctx);
         advance(ctx);
         Node *rhs = parseAndExpression(ctx);
-        BinaryOperationNode* binop = malloc(sizeof(BinaryOperationNode));
+        BinaryOperationNode *binop = malloc(sizeof(BinaryOperationNode));
         binop->lhs = lhs;
         binop->rhs = rhs;
         binop->op = op;
@@ -375,7 +375,7 @@ Node *parseOrExpression(ParserContext *ctx) {
         Token op = CURRENTTOKEN(ctx);
         advance(ctx);
         Node *rhs = parseXorExpression(ctx);
-        BinaryOperationNode* binop = malloc(sizeof(BinaryOperationNode));
+        BinaryOperationNode *binop = malloc(sizeof(BinaryOperationNode));
         binop->lhs = lhs;
         binop->rhs = rhs;
         binop->op = op;
@@ -398,7 +398,7 @@ Node *parseAssignmentExpression(ParserContext *ctx) {
         Token op = CURRENTTOKEN(ctx);
         advance(ctx);
         Node *rhs = parseOrExpression(ctx);
-        BinaryOperationNode* binop = malloc(sizeof(BinaryOperationNode));
+        BinaryOperationNode *binop = malloc(sizeof(BinaryOperationNode));
         binop->lhs = lhs;
         binop->rhs = rhs;
         binop->op = op;
@@ -411,6 +411,11 @@ Node *parseAssignmentExpression(ParserContext *ctx) {
 
 Node *parseExpression(ParserContext *ctx) {
     return parseAssignmentExpression(ctx);
+}
+
+Node *parseVariableDeclerationOrExpression(ParserContext *ctx) {
+    /* TODO: Variable declerations */
+    return parseExpression(ctx);
 }
 
 Node *parseStatement(ParserContext *ctx) {
@@ -479,6 +484,95 @@ Node *parseStatement(ParserContext *ctx) {
                 statement->elseCase = NULL;
             }
             return ifNode;
+        } else if (ISCURRENTTOKENVALUE(ctx, "while")) {
+            advance(ctx);
+            if (!ISCURRENTTOKENTYPE(ctx, TT_LPAREN)) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            advance(ctx);
+            Node *condition = parseExpression(ctx);
+            if (condition == NULL) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            if (!ISCURRENTTOKENTYPE(ctx, TT_RPAREN)) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            advance(ctx);
+            Node *body = parseStatement(ctx);
+            if (body == NULL) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            WhileNode *statement = malloc(sizeof(WhileNode));
+            statement->body = body;
+            statement->condition = condition;
+            Node *whileNode = malloc(sizeof(Node));
+            whileNode->node = statement;
+            whileNode->type = NT_WHILE;
+            return whileNode;
+        } else if (ISCURRENTTOKENVALUE(ctx, "for")) {
+            ForNode *statement = malloc(sizeof(ForNode));
+            Node *loop = malloc(sizeof(Node));
+            loop->type = NT_FOR;
+            loop->node = statement;
+            advance(ctx);
+            if (!ISCURRENTTOKENTYPE(ctx, TT_LPAREN)) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            advance(ctx);
+            if (!ISCURRENTTOKENTYPE(ctx, TT_SEMICOLON)) {
+                statement->initializer = parseVariableDeclerationOrExpression(ctx);
+                if (statement->initializer == NULL) {
+                    /* TODO: Error message */
+                    return NULL;
+                }
+            } else {
+                statement->initializer = NULL;
+            }
+            if (!ISCURRENTTOKENTYPE(ctx, TT_SEMICOLON)) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            advance(ctx);
+            if (!ISCURRENTTOKENTYPE(ctx, TT_SEMICOLON)) {
+                statement->condition = parseExpression(ctx);
+                if (statement->condition == NULL) {
+                    /* TODO: Error message */
+                    return NULL;
+                }
+            } else {
+                statement->condition = NULL;
+            }
+            if (!ISCURRENTTOKENTYPE(ctx, TT_SEMICOLON)) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            advance(ctx);
+            if (!ISCURRENTTOKENTYPE(ctx, TT_RPAREN)) {
+                statement->increment = parseVariableDeclerationOrExpression(ctx);
+                if (statement->increment == NULL) {
+                    /* TODO: Error message */
+                    return NULL;
+                }
+            } else {
+                statement->increment = NULL;
+            }
+            if (!ISCURRENTTOKENTYPE(ctx, TT_RPAREN)) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            advance(ctx);
+            Node *body = parseStatement(ctx);
+            if (body == NULL) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            statement->body = body;
+            return loop;
         }
     } else if (ISCURRENTTOKENTYPE(ctx, TT_LBRACE)) {
         advance(ctx);
@@ -874,6 +968,8 @@ void printNode(Node *node, size_t depth) {
                 printf("reg %s ", regAsString(varDecl->reg));
             }
             printTypedVariable(varDecl->type, varDecl->name);
+            for (size_t i = 0; i < varDecl->arrayDepth; i++)
+                printf("[%zu]", varDecl->arraySizes[i]);
             if (varDecl->initializer != NULL) {
                 printf(" = ");
                 printNode(varDecl->initializer, 0);
@@ -1029,7 +1125,7 @@ void printNode(Node *node, size_t depth) {
                     .node = type->fields[i]
                 };
                 printNode(&tmp, 0);
-                printf(";");
+                printf(";\n");
             }
             printf("}");
         } break;
@@ -1044,7 +1140,7 @@ void printNode(Node *node, size_t depth) {
                     .node = type->fields[i]
                 };
                 printNode(&tmp, 0);
-                printf(";");
+                printf(";\n");
             }
             printf("}");
         } break;
@@ -1056,7 +1152,7 @@ void printNode(Node *node, size_t depth) {
                     printf("  ");
                 printNode(compound->statements[i], depth + 1);
                 if (compound->statements[i]->type != NT_LABEL)
-                    printf(";");
+                    printf(";\n");
             }
             printf("}");
         } break;
