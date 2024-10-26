@@ -15,10 +15,15 @@
 #define ISTOKENTYPE(TOKEN, TYPE) ((TOKEN).type == (TYPE))
 #define ISTOKENVALUE(TOKEN, VALUE) (!strcmp((TOKEN).value, (VALUE)))
 #define ISTOKEN(TOKEN, TYPE, VALUE) (ISTOKENTYPE((TOKEN), (TYPE)) && ISTOKENVALUE((TOKEN), (VALUE)))
-#define ISCURRENTTOKENTYPE(CTX, TYPE) ISTOKENTYPE((CTX)->current, (TYPE))
-#define ISCURRENTTOKENVALUE(CTX, VALUE) ISTOKENVALUE((CTX)->current, (VALUE))
-#define ISCURRENTTOKEN(CTX, TYPE, VALUE) ISTOKEN((CTX)->current, (TYPE), (VALUE))
 #define CURRENTTOKEN(CTX) ((CTX)->current)
+#define ISCURRENTTOKENTYPE(CTX, TYPE) ISTOKENTYPE(CURRENTTOKEN(CTX), (TYPE))
+#define ISCURRENTTOKENVALUE(CTX, VALUE) ISTOKENVALUE(CURRENTTOKEN(CTX), (VALUE))
+#define ISCURRENTTOKEN(CTX, TYPE, VALUE) ISTOKEN(CURRENTTOKEN(CTX), (TYPE), (VALUE))
+#define NEXTTOKEN(CTX) ((CTX)->tokens[(CTX)->index + 1])
+#define ISNEXTTOKENTYPE(CTX, TYPE) ISTOKENTYPE(NEXTTOKEN(CTX), (TYPE))
+#define ISNEXTTOKENVALUE(CTX, VALUE) ISTOKENVALUE(NEXTTOKEN(CTX), (VALUE))
+#define ISNEXTTOKEN(CTX, TYPE, VALUE) ISTOKEN(NEXTTOKEN(CTX), (TYPE), (VALUE))
+
 
 Node *parseExpression(ParserContext *ctx);
 
@@ -410,14 +415,110 @@ Node *parseExpression(ParserContext *ctx) {
 
 Node *parseStatement(ParserContext *ctx) {
     if (ISCURRENTTOKENTYPE(ctx, TT_KEYWORD)) {
-        /* TOOD: Keywords */
-        return NULL;
+        if (ISCURRENTTOKENVALUE(ctx, "if")) {
+            IfNode *statement = malloc(sizeof(IfNode));
+            Node *ifNode = malloc(sizeof(Node));
+            ifNode->type = NT_IF;
+            ifNode->node = statement;
+            advance(ctx);
+            if (!ISCURRENTTOKENTYPE(ctx, TT_LPAREN)) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            advance(ctx);
+            Node *condition = parseExpression(ctx);
+            if (condition == NULL) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            if (!ISCURRENTTOKENTYPE(ctx, TT_RPAREN)) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            advance(ctx);
+            Node *body = parseStatement(ctx);
+
+            statement->bodies = malloc(sizeof(Node*));
+            statement->conditions = malloc(sizeof(Node*));
+            statement->nCases = 1;
+            statement->bodies[0] = body;
+            statement->conditions[0] = condition;
+            while (ISCURRENTTOKEN(ctx, TT_KEYWORD, "else") && ISNEXTTOKEN(ctx, TT_KEYWORD, "if")) {
+                advance(ctx);
+                advance(ctx);
+                if (!ISCURRENTTOKENTYPE(ctx, TT_LPAREN)) {
+                    /* TODO: Error message */
+                    return NULL;
+                }
+                advance(ctx);
+                Node *caseCondition = parseExpression(ctx);
+                if (!ISCURRENTTOKENTYPE(ctx, TT_RPAREN)) {
+                    /* TODO: Error message */
+                    return NULL;
+                }
+                advance(ctx);
+                Node *caseBody = parseStatement(ctx);
+                if (caseBody == NULL) {
+                    /* TODO: Error message */
+                    return NULL;
+                }
+                statement->bodies = realloc(statement->bodies, (statement->nCases + 1) * sizeof(Node*));
+                statement->conditions = realloc(statement->conditions, (statement->nCases + 1) * sizeof(Node*));
+                statement->bodies[statement->nCases] = caseBody;
+                statement->conditions[statement->nCases] = caseCondition;
+                statement->nCases += 1;
+            }
+            if (ISCURRENTTOKEN(ctx, TT_KEYWORD, "else")) {
+                advance(ctx);
+                statement->elseCase = parseStatement(ctx);
+                if (statement->elseCase == NULL) {
+                    /* TODO: Error message */
+                    return NULL;
+                }
+            } else {
+                statement->elseCase = NULL;
+            }
+            return ifNode;
+        }
+    } else if (ISCURRENTTOKENTYPE(ctx, TT_LBRACE)) {
+        advance(ctx);
+        Node *compound = malloc(sizeof(Node));
+        CompoundNode *statement = malloc(sizeof(CompoundNode));
+        statement->nStatements = 0;
+        statement->statements = NULL;
+
+        while (!ISCURRENTTOKENTYPE(ctx, TT_RBRACE)) {
+            Node *stmnt = parseStatement(ctx);
+            if (statement == NULL)
+                return NULL;
+            statement->statements = realloc(statement->statements, (statement->nStatements + 1) * sizeof(Node*));
+            statement->statements[statement->nStatements++] = stmnt;
+        }
+        if (ISCURRENTTOKENTYPE(ctx, TT_EOF)) {
+            /* TODO: Error message here */
+            return NULL;
+        }
+        advance(ctx);
+
+        compound->type = NT_COMPOUND;
+        compound->node = statement;
+        return compound;
+    } else if (ISCURRENTTOKENTYPE(ctx, TT_SEMICOLON)) {
+        Node *statement = malloc(sizeof(Node));
+        statement->type = NT_NONE;
+        advance(ctx);
+        return statement;
     }
     Node *expression = parseExpression(ctx);
     if (expression == NULL) {
         /* TODO: Print some error to the user */
         return NULL;
     }
+    if (!ISCURRENTTOKENTYPE(ctx, TT_SEMICOLON)) {
+        /* TODO: Error message */
+        return NULL;
+    }
+    advance(ctx);
     return expression;
 }
 
@@ -435,15 +536,10 @@ Node *parse(Token *tokens, const char *file, const char *source) {
     program->nStatements = 0;
     program->statements = NULL;
 
-    while (ctx.current.type != TT_EOF) {
+    while (!ISCURRENTTOKENTYPE(&ctx, TT_EOF)) {
         Node *statement = parseStatement(&ctx);
         if (statement == NULL)
             break;
-        if (!ISCURRENTTOKENTYPE(&ctx, TT_SEMICOLON)) {
-            /* TODO: Print an error here */
-            break;
-        }
-        advance(&ctx);
         program->statements = realloc(program->statements, (program->nStatements + 1) * sizeof(Node*));
         program->statements[program->nStatements++] = statement;
     }
@@ -737,6 +833,7 @@ void printTypedVariable(Type type, Token name) {
 
 void printNode(Node *node, size_t depth) {
     switch (node->type) {
+        case NT_NONE: break;
         case NT_INT:
         case NT_FLOAT: {
             printf("%s", ((ValueNode*)node->node)->value.value);
@@ -769,6 +866,13 @@ void printNode(Node *node, size_t depth) {
         } break;
         case NT_VARDECL: {
             VariableDeclerationNode *varDecl = (VariableDeclerationNode*)node->node;
+            if (varDecl->reg == AUTO) {
+                printf("reg ");
+            } else if (varDecl->reg == NONE) {
+                printf("noreg ");
+            } else {
+                printf("reg %s ", regAsString(varDecl->reg));
+            }
             printTypedVariable(varDecl->type, varDecl->name);
             if (varDecl->initializer != NULL) {
                 printf(" = ");
@@ -890,11 +994,11 @@ void printNode(Node *node, size_t depth) {
                 printf(") ");
                 printNode(ifStatement->bodies[i], depth);
             }
-            if (ifStatement->elseCase) {
+            if (ifStatement->elseCase != NULL) {
                 printf(" else ");
                 printNode(ifStatement->elseCase, depth);
             }
-        }
+        } break;
         case NT_SWITCH: {
             printf("TODO: NT_SWITCH");
         } break;

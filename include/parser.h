@@ -10,6 +10,9 @@
 #include "lexer.h"
 
 typedef enum NodeType {
+    /* Empty node */
+    NT_NONE,
+
     /* Basic types */
     NT_INT,
     NT_FLOAT,
@@ -129,7 +132,6 @@ typedef enum Qualifier {
 } Qualifier;
 
 typedef struct Type {
-    Register reg;
     Qualifier qualifiers;
     size_t ptrDepth;
     VariableDeclerationNode **parameters;
@@ -159,6 +161,7 @@ typedef struct UnaryOperationNode {
 } UnaryOperationNode;
 
 struct VariableDeclerationNode {
+    Register reg;
     Type type;
     Token name;
     Node *initializer;
