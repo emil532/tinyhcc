@@ -20,7 +20,7 @@ static inline void appendToken(Token **tokens, size_t *sTokens, size_t *nTokens,
 }
 
 static const char *keywords[] = {
-    "if", "else", "while", "for", "switch", "case", "asm", "try", "catch", "throw", "break", "goto", "class", "union",
+    "if", "else", "while", "for", "switch", "case", "asm", "try", "catch", "throw", "break", "goto", "class", "union", "return",
     /* Pseudo */
     "no_warn", "reg", "noreg", "static", "extern", /* "import", */
     NULL

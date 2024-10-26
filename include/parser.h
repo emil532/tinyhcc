@@ -43,6 +43,8 @@ typedef enum NodeType {
     NT_LABEL,
     NT_BREAK,
 
+    NT_RETURN,
+
     /* Error handling */
     NT_TRY,
 
@@ -127,8 +129,8 @@ typedef enum Qualifier {
     PRIVATE      = 1 << 1,
     PUBLIC       = 1 << 2,
     EXTERN       = 1 << 3,
-    VARARG       = 1 << 8, /* Pseudo-qualifier */
-    FUNCTION     = 1 << 9  /* Pseudo-qualifier */
+    VARARG       = 1 << 6, /* Pseudo-qualifier */
+    FUNCTION     = 1 << 7  /* Pseudo-qualifier */
 } Qualifier;
 
 typedef struct Type {
@@ -217,7 +219,7 @@ typedef struct IfNode {
 
 typedef struct SwitchNode {
     /* TODO */
-    char reversed;
+    char reserved;
 } SwitchNode;
 
 typedef struct GotoNode {

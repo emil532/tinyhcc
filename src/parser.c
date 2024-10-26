@@ -573,6 +573,77 @@ Node *parseStatement(ParserContext *ctx) {
             }
             statement->body = body;
             return loop;
+        } else if (ISCURRENTTOKENVALUE(ctx, "goto")) {
+            advance(ctx);
+            if (!ISCURRENTTOKENTYPE(ctx, TT_IDENTIFIER)) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            Token label = CURRENTTOKEN(ctx);
+            advance(ctx);
+            if (!ISCURRENTTOKENTYPE(ctx, TT_SEMICOLON)) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            advance(ctx);
+            GotoNode *statement = malloc(sizeof(GotoNode));
+            statement->label = label;
+            Node *gotoNode = malloc(sizeof(Node));
+            gotoNode->node = statement;
+            gotoNode->type = NT_GOTO;
+            return gotoNode;
+        } else if (ISCURRENTTOKENVALUE(ctx, "try")) {
+            advance(ctx);
+            Node *body = parseStatement(ctx);
+            if (body == NULL) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            if (!ISCURRENTTOKEN(ctx, TT_KEYWORD, "catch")) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            advance(ctx);
+            Node *handler = parseStatement(ctx);
+            if (handler == NULL) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            TryNode *statement = malloc(sizeof(TryNode));
+            statement->body = body;
+            statement->catchBody = handler;
+            Node *tryNode = malloc(sizeof(TryNode));
+            tryNode->node = statement;
+            tryNode->type = NT_TRY;
+            return tryNode;
+        } else if (ISCURRENTTOKENVALUE(ctx, "break")) {
+            advance(ctx);
+            Node *breakNode = malloc(sizeof(Node));
+            breakNode->type = NT_BREAK;
+            if (!ISCURRENTTOKENTYPE(ctx, TT_SEMICOLON)) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            advance(ctx);
+            return breakNode;
+        } else if (ISCURRENTTOKENVALUE(ctx, "return")) {
+            advance(ctx);
+            Node *returnNode = malloc(sizeof(Node));
+            returnNode->node = NULL;
+            returnNode->type = NT_RETURN;
+            if (!ISCURRENTTOKENTYPE(ctx, TT_SEMICOLON)) {
+                returnNode->node = parseExpression(ctx);
+                if (returnNode->node == NULL) {
+                    /* TODO: Error message */
+                    return NULL;
+                }
+            }
+            if (!ISCURRENTTOKENTYPE(ctx, TT_SEMICOLON)) {
+                /* TODO: Error message */
+                return NULL;
+            }
+            advance(ctx);
+            return returnNode;
         }
     } else if (ISCURRENTTOKENTYPE(ctx, TT_LBRACE)) {
         advance(ctx);
@@ -602,6 +673,16 @@ Node *parseStatement(ParserContext *ctx) {
         statement->type = NT_NONE;
         advance(ctx);
         return statement;
+    } else if (ISCURRENTTOKENTYPE(ctx, TT_IDENTIFIER) && ISNEXTTOKENTYPE(ctx, TT_COLON)) {
+        Token label = CURRENTTOKEN(ctx);
+        advance(ctx);
+        advance(ctx);
+        LabelNode *statement = malloc(sizeof(LabelNode));
+        statement->name = label;
+        Node *labelNode = malloc(sizeof(Node));
+        labelNode->node = statement;
+        labelNode->type = NT_LABEL;
+        return labelNode;
     }
     Node *expression = parseExpression(ctx);
     if (expression == NULL) {
@@ -1106,6 +1187,11 @@ void printNode(Node *node, size_t depth) {
         } break;
         case NT_BREAK: {
             printf("break");
+        } break;
+        case NT_RETURN: {
+            printf("return ");
+            if (node->node != NULL)
+                printNode(node->node, 0);
         } break;
         case NT_TRY: {
             TryNode *try = (TryNode*)node->node;
