@@ -132,8 +132,6 @@ typedef struct Type {
     Register reg;
     Qualifier qualifiers;
     size_t ptrDepth;
-    size_t *arraySizes;
-    size_t arrayDepth;
     VariableDeclerationNode **parameters;
     size_t nParameters;
     union {
@@ -164,6 +162,8 @@ struct VariableDeclerationNode {
     Type type;
     Token name;
     Node *initializer;
+    size_t *arraySizes;
+    size_t arrayDepth;
 };
 
 typedef struct VariableAccessNode {
@@ -214,6 +214,7 @@ typedef struct IfNode {
 
 typedef struct SwitchNode {
     /* TODO */
+    char reversed;
 } SwitchNode;
 
 typedef struct GotoNode {
@@ -262,6 +263,7 @@ static inline void advance(ParserContext *ctx) {
 }
 
 Node *parse(Token *tokens, const char *file, const char *source);
+void freeNode(Node *node);
 #ifdef TRANSPILER
 void printNode(Node *node, size_t depth);
 #endif /* TRANSPILER */

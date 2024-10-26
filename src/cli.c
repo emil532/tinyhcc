@@ -114,6 +114,7 @@ int main(int argc, const char **argv) {
     #endif /* TRANSPILER */
     #endif /* DEBUG */
 
+        freeNode(AST);
         freeTokens(tokens);
         free(buffer);
         fclose(f);

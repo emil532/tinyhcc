@@ -93,9 +93,10 @@ Node *parseAccessExpression(ParserContext *ctx) {
             Node **arguments = NULL;
             size_t nArguments = 0;
             if (!ISCURRENTTOKENTYPE(ctx, TT_RPAREN)) {
-                do {
-                    if (ISCURRENTTOKENTYPE(ctx, TT_COMMA))
-                        advance(ctx);
+                if (ISCURRENTTOKENTYPE(ctx, TT_COMMA)) {
+                    arguments = realloc(arguments, (nArguments + 1) * sizeof(Node*));
+                    arguments[nArguments++] = NULL;
+                } else {
                     Node *expression = parseExpression(ctx);
                     if (expression == NULL) {
                         /* TODO: Error message here */
@@ -103,7 +104,22 @@ Node *parseAccessExpression(ParserContext *ctx) {
                     }
                     arguments = realloc(arguments, (nArguments + 1) * sizeof(Node*));
                     arguments[nArguments++] = expression;
-                } while (ISCURRENTTOKENTYPE(ctx, TT_COMMA));
+                }
+                while (ISCURRENTTOKENTYPE(ctx, TT_COMMA)) {
+                    advance(ctx);
+                    if (ISCURRENTTOKENTYPE(ctx, TT_COMMA) || ISCURRENTTOKENTYPE(ctx, TT_RPAREN)) {
+                        arguments = realloc(arguments, (nArguments + 1) * sizeof(Node*));
+                        arguments[nArguments++] = NULL;
+                    } else {
+                        Node *expression = parseExpression(ctx);
+                        if (expression == NULL) {
+                            /* TODO: Error message here */
+                            return NULL;
+                        }
+                        arguments = realloc(arguments, (nArguments + 1) * sizeof(Node*));
+                        arguments[nArguments++] = expression;
+                    }
+                }
             }
             if (!ISCURRENTTOKENTYPE(ctx, TT_RPAREN)) {
                 /* TODO: Error message here */
@@ -437,6 +453,127 @@ Node *parse(Token *tokens, const char *file, const char *source) {
     return AST;
 }
 
+void freeType(Type *type) {
+    if (type->parameters) {
+        for (size_t i = 0; i < type->nParameters; i++) {
+            if (type->parameters[i]->initializer)
+                freeNode(type->parameters[i]->initializer);
+            if (type->parameters[i]->arraySizes != NULL)
+                free(type->parameters[i]->arraySizes);
+            freeType(&type->parameters[i]->type);
+        }
+    }
+    if (type->qualifiers & FUNCTION) {
+        freeType(type->type.returnType);
+        free(type->type.returnType);
+    }
+}
+
+void freeNode(Node *node) {
+    switch (node->type) {
+        case NT_ASSIGN:
+        case NT_BINOP: {
+            BinaryOperationNode *binOp = (BinaryOperationNode*)node->node;
+            freeNode(binOp->lhs);
+            freeNode(binOp->rhs);
+        } break;
+        case NT_UNARYOP: {
+            UnaryOperationNode *unOp = (UnaryOperationNode*)node->node;
+            freeNode(unOp->value);
+        } break;
+        case NT_VARDECL: {
+            VariableDeclerationNode *decl = (VariableDeclerationNode*)node->node;
+            if (decl->initializer != NULL)
+                freeNode(decl->initializer);
+            if (decl->arraySizes != NULL)
+                free(decl->arraySizes);
+            freeType(&decl->type);
+        } break;
+        case NT_FUNCCALL: {
+            FunctionCallNode *call = (FunctionCallNode*)node->node;
+            freeNode(call->function);
+            for (size_t i = 0; i < call->nArguments; i++)
+                if (call->arguments[i] != NULL)
+                    freeNode(call->arguments[i]);
+            if (call->arguments)
+                free(call->arguments);
+        } break;
+        case NT_FUNCDECL: {
+            FunctionDeclerationNode *decl = (FunctionDeclerationNode*)node->node;
+            for (size_t i = 0; i < decl->body->nStatements; i++)
+                freeNode(decl->body->statements[i]);
+            if (decl->body->statements)
+                free(decl->body->statements);
+            free(decl->body);
+            freeType(&decl->type);
+        } break;
+        case NT_ARRAYACCESS: {
+            ArrayAccessNode *access = (ArrayAccessNode*)node->node;
+            freeNode(access->array);
+            freeNode(access->index);
+        } break;
+        case NT_ACCESS: {
+            AccessNode *access = (AccessNode*)node->node;
+            freeNode(access->object);
+        } break;
+        case NT_FOR: {
+            ForNode *loop = (ForNode*)node->node;
+            if (loop->initializer)
+                freeNode(loop->initializer);
+            if (loop->condition)
+                freeNode(loop->condition);
+            if (loop->increment)
+                freeNode(loop->increment);
+            freeNode(loop->body);
+        } break;
+        case NT_WHILE: {
+            WhileNode *loop = (WhileNode*)node->node;
+            freeNode(loop->condition);
+            freeNode(loop->body);
+        } break;
+        case NT_IF: {
+            IfNode *statement = (IfNode*)node->node;
+            for (size_t i = 0; i < statement->nCases; i++) {
+                freeNode(statement->conditions[i]);
+                freeNode(statement->bodies[i]);
+            }
+            if (statement->elseCase)
+                freeNode(statement->elseCase);
+            free(statement->conditions);
+            free(statement->bodies);
+        } break;
+        case NT_TRY: {
+            TryNode *try = (TryNode*)node->node;
+            freeNode(try->body);
+            freeNode(try->catchBody);
+        } break;
+        case NT_CLASS:
+        case NT_UNION: {
+            TypeNode *type = (TypeNode*)node->node;
+            for (size_t i = 0; i < type->nFields; i++) {
+                VariableDeclerationNode *decl = type->fields[i];
+                if (decl->initializer != NULL)
+                    freeNode(decl->initializer);
+                if (decl->arraySizes != NULL)
+                    free(decl->arraySizes);
+            }
+            if (type->fields != NULL)
+                free(type->fields);
+        } break;
+        case NT_COMPOUND: {
+            CompoundNode *compound = (CompoundNode*)node->node;
+            for (size_t i = 0; i < compound->nStatements; i++)
+                freeNode(compound->statements[i]);
+            if (compound->statements)
+                free(compound->statements);
+        }
+        default:
+            break;
+    }
+    free(node->node);
+    free(node);
+}
+
 #ifdef TRANSPILER
 char *operatorFromToken(Token token) {
     switch (token.type) {
@@ -551,8 +688,6 @@ void printTypedVariable(Type type, Token name) {
         for (size_t i = 0; i < type.ptrDepth; i++)
             printf("*");
         printf("%s", name.value);
-        for (size_t i = 0; i < type.arrayDepth; i++)
-            printf("[%zu]", type.arraySizes[i]);
         return;
     }
     Type *stack = malloc(sizeof(Type));
@@ -580,8 +715,6 @@ void printTypedVariable(Type type, Token name) {
         if (stack[i].qualifiers & EXTERN) printf("extern ");
     }
     printf("%s", name.value);
-    for (size_t i = 0; i < type.arrayDepth; i++)
-        printf("[%zu]", type.arraySizes[i]);
     for (size_t i = 0; i < depth + 1; i++) {
         printf(")(");
         for (size_t j = 0; j < stack[i].nParameters; j++) {
@@ -683,8 +816,6 @@ void printNode(Node *node, size_t depth) {
                 if (stack[i].qualifiers & EXTERN) printf("extern ");
             }
             printf("%s", name.value);
-            for (size_t i = 0; i < type.arrayDepth; i++)
-                printf("[%zu]", type.arraySizes[i]);
             for (size_t i = 0; i < depth + 1; i++) {
                 if (i > 0) printf(")");
                 printf("(");
