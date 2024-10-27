@@ -24,6 +24,9 @@
 #define ISNEXTTOKENVALUE(CTX, VALUE) ISTOKENVALUE(NEXTTOKEN(CTX), (VALUE))
 #define ISNEXTTOKEN(CTX, TYPE, VALUE) ISTOKEN(NEXTTOKEN(CTX), (TYPE), (VALUE))
 
+#define ISCURRENTTOKENATYPE(CTX) isType(CTX, CURRENTTOKEN(CTX))
+#define ISNEXTTOKENATYPE(CTX) isType(CTX, NEXTTOKEN(CTX))
+
 
 Node *parseExpression(ParserContext *ctx);
 
@@ -87,13 +90,25 @@ Node *parseLiteralExpression(ParserContext *ctx) {
     return NULL;
 }
 
+Node *parseTypeCastExpression(ParserContext *ctx) {
+    Node *literal = parseLiteralExpression(ctx);
+    while (ISCURRENTTOKENTYPE(ctx, TT_LPAREN) && ISNEXTTOKENATYPE(ctx)) {
+        advance(ctx);
+        /* TODO: Parse type here */
+        while (!ISCURRENTTOKENTYPE(ctx, TT_RPAREN))
+            advance(ctx);
+        advance(ctx);
+    }
+    return literal;
+}
+
 Node *parseAccessExpression(ParserContext *ctx) {
-    Node *access = parseLiteralExpression(ctx);
+    Node *access = parseTypeCastExpression(ctx);
     while (
         ISCURRENTTOKENTYPE(ctx, TT_LPAREN) || ISCURRENTTOKENTYPE(ctx, TT_LBRACKET) ||
         ISCURRENTTOKENTYPE(ctx, TT_DOT)    || ISCURRENTTOKENTYPE(ctx, TT_ARROW)
     ) {
-        if (ISCURRENTTOKENTYPE(ctx, TT_LPAREN)) {
+        if (ISCURRENTTOKENTYPE(ctx, TT_LPAREN) && !ISNEXTTOKENATYPE(ctx)) {
             advance(ctx);
             Node **arguments = NULL;
             size_t nArguments = 0;
@@ -645,6 +660,9 @@ Node *parseStatement(ParserContext *ctx) {
             advance(ctx);
             return returnNode;
         }
+    } else if (ISCURRENTTOKENATYPE(ctx)) {
+        /* Parse variable- and function declerations here */
+        return NULL;
     } else if (ISCURRENTTOKENTYPE(ctx, TT_LBRACE)) {
         advance(ctx);
         Node *compound = malloc(sizeof(Node));
@@ -702,8 +720,16 @@ Node *parse(Token *tokens, const char *file, const char *source) {
         .tokens = tokens,
         .index = -1,
         .file = file,
-        .source = source
+        .source = source,
+        .types = NULL,
+        .nTypes = 0
     };
+    /* Register the built-in types */
+    const char *builtins[] = {
+        "U0", "I0", "U8", "I8", "U16", "I16", "U32", "I32", "U64", "I64", NULL
+    };
+    registerTypes(&ctx, (char**)builtins);
+
     advance(&ctx);
 
     Node *AST = malloc(sizeof(Node));

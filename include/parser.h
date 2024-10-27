@@ -7,6 +7,10 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+
 #include "lexer.h"
 
 typedef enum NodeType {
@@ -258,6 +262,9 @@ typedef struct ParserContext {
     Token *tokens;
     Token current;
     size_t index;
+    /* For type parsing */
+    char **types;
+    size_t nTypes;
     /* For printing errors */
     const char *file;
     const char *source;
@@ -265,6 +272,24 @@ typedef struct ParserContext {
 
 static inline void advance(ParserContext *ctx) {
     ctx->current = ctx->tokens[++ctx->index];
+}
+
+static inline void registerType(ParserContext *ctx, char *type) {
+    ctx->types = (char**)realloc(ctx->types, (ctx->nTypes + 1) * sizeof(char*));
+    ctx->types[ctx->nTypes++] = type;
+}
+
+static inline void registerTypes(ParserContext *ctx, char **types) {
+    while (*types) {
+        registerType(ctx, *(types++));
+    }
+}
+
+static inline bool isType(ParserContext *ctx, Token token) {
+    for (size_t i = 0; i < ctx->nTypes; i++)
+        if (!strcmp(token.value, ctx->types[i]))
+            return true;
+    return false;
 }
 
 Node *parse(Token *tokens, const char *file, const char *source);
