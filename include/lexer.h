@@ -77,7 +77,9 @@ typedef enum TokenType {
     TT_COLON,
     TT_DOT,
     TT_ARROW,
-    TT_ELLIPSIS
+    TT_ELLIPSIS,
+    TT_COMMA,
+
 } TokenType;
 
 typedef struct Token {
@@ -91,7 +93,7 @@ typedef struct Token {
 } Token;
 
 Token *tokenize(const char *source, const char *file);
-void freeTokens(Token *tokens);
+void freeTokens(Token* tokens, size_t nTokens);
 #ifdef DEBUG
 const char *tokenTypeAsString(Token token);
 #endif /* DEBUG */
