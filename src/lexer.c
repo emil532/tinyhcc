@@ -185,7 +185,7 @@ Token* tokenize(const char* source, const char* file) {
         return NULL;
     }
 
-    Token* tokens = malloc(128 * sizeof(Token)); /* For performance reasons we assume files will have 128 or more tokens */
+    Token* tokens = malloc(128 * sizeof(Token));
     size_t sTokens = 128;
     size_t nTokens = 0;
     size_t i = 0;

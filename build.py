@@ -162,6 +162,8 @@ class Builder:
 def main() -> None:
     flp: Callable[[str], str] = lambda path: os.path.join(*path.split("/"))
     builder: Builder = Builder(debug="debug" in sys.argv, rebuild="rebuild" in sys.argv)
+    if "transpiler" in sys.argv:
+        builder.cdefine("TRANSPILER", "1")
     builder.cdefine("_CRT_SECURE_NO_WARNINGS", "1")
     builder.build(flp("cli.c"))
     builder.build(flp("lexer.c"))

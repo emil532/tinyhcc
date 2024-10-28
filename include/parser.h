@@ -7,9 +7,16 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+
 #include "lexer.h"
 
 typedef enum NodeType {
+    /* Empty node */
+    NT_NONE,
+
     /* Basic types */
     NT_INT,
     NT_FLOAT,
@@ -26,7 +33,10 @@ typedef enum NodeType {
     NT_ASSIGN,
     NT_FUNCCALL,
     NT_FUNCDECL,
+
+    /* Dereferencing and accessing */
     NT_ARRAYACCESS,
+    NT_ACCESS,
 
     /* Control flow */
     NT_FOR,
@@ -36,6 +46,8 @@ typedef enum NodeType {
     NT_GOTO,
     NT_LABEL,
     NT_BREAK,
+
+    NT_RETURN,
 
     /* Error handling */
     NT_TRY,
@@ -117,23 +129,23 @@ typedef enum Register {
 } Register;
 
 typedef enum Qualifier {
-    STATIC   = 1 << 0,
-    PRIVATE  = 1 << 1,
-    PUBLIC   = 1 << 2,
-    EXTERN   = 1 << 3,
-    VARARG   = 1 << 6, /* Pseudo-qualifier */
-    FUNCTION = 1 << 7  /* Pseudo-qualifier */
+    STATIC       = 1 << 0,
+    PRIVATE      = 1 << 1,
+    PUBLIC       = 1 << 2,
+    EXTERN       = 1 << 3,
+    VARARG       = 1 << 6, /* Pseudo-qualifier */
+    FUNCTION     = 1 << 7  /* Pseudo-qualifier */
 } Qualifier;
 
 typedef struct Type {
-    Register reg;
     Qualifier qualifiers;
     size_t ptrDepth;
-    size_t* arraySizes;
-    size_t arrayDepth;
-    char *name;
     VariableDeclerationNode **parameters;
     size_t nParameters;
+    union {
+        struct Type *returnType;
+        char *base;
+    } type;
 } Type;
 
 /* For ints, floats, strings, and chars */
@@ -155,9 +167,12 @@ typedef struct UnaryOperationNode {
 } UnaryOperationNode;
 
 struct VariableDeclerationNode {
+    Register reg;
     Type type;
     Token name;
     Node *initializer;
+    size_t *arraySizes;
+    size_t arrayDepth;
 };
 
 typedef struct VariableAccessNode {
@@ -181,6 +196,12 @@ typedef struct ArrayAccessNode {
     Node *index;
 } ArrayAccessNode;
 
+typedef struct AccessNode {
+    Node *object;
+    Token op;
+    Token member;
+} AccessNode;
+
 typedef struct ForNode {
     Node *initializer;
     Node *condition;
@@ -201,13 +222,8 @@ typedef struct IfNode {
 } IfNode;
 
 typedef struct SwitchNode {
-    Node *value;
-    Node **cases;
-    Node **bodies;
-    Node *defaultCase;
-    /* For sub-switches */
-    size_t startIndex;
-    size_t endIndex;
+    /* TODO */
+    char reserved;
 } SwitchNode;
 
 typedef struct GotoNode {
@@ -246,6 +262,9 @@ typedef struct ParserContext {
     Token *tokens;
     Token current;
     size_t index;
+    /* For type parsing */
+    char **types;
+    size_t nTypes;
     /* For printing errors */
     const char *file;
     const char *source;
@@ -255,6 +274,27 @@ static inline void advance(ParserContext *ctx) {
     ctx->current = ctx->tokens[++ctx->index];
 }
 
-Node *parse(Token *tokens, const char *file, const char *source);
+static inline void registerType(ParserContext *ctx, char *type) {
+    ctx->types = (char**)realloc(ctx->types, (ctx->nTypes + 1) * sizeof(char*));
+    ctx->types[ctx->nTypes++] = type;
+}
 
+static inline void registerTypes(ParserContext *ctx, char **types) {
+    while (*types) {
+        registerType(ctx, *(types++));
+    }
+}
+
+static inline bool isType(ParserContext *ctx, Token token) {
+    for (size_t i = 0; i < ctx->nTypes; i++)
+        if (!strcmp(token.value, ctx->types[i]))
+            return true;
+    return false;
+}
+
+Node *parse(Token *tokens, const char *file, const char *source);
+void freeNode(Node *node);
+#ifdef TRANSPILER
+void printNode(Node *node, size_t depth);
+#endif /* TRANSPILER */
 #endif /* PARSER_H */

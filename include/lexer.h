@@ -76,6 +76,7 @@ typedef enum TokenType {
     TT_SEMICOLON,
     TT_COLON,
     TT_DOT,
+    TT_COMMA,
     TT_ARROW,
     TT_ELLIPSIS,
     TT_COMMA,
